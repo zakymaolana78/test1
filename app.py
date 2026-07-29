@@ -572,4 +572,3 @@ st.info(
     f"{tahun_tertinggi} dengan jumlah sekitar "
     f"{nilai_tertinggi:,.0f} balita."
 )
-```
