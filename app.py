@@ -16,14 +16,14 @@ from sklearn.metrics import (
 # =========================================================
 
 st.set_page_config(
-    page_title="Prediksi Stunting Kabupaten Indramayu",
+    page_title="Prediksi Jumlah Balita Stunting Kabupaten Indramayu",
     page_icon="📊",
     layout="wide"
 )
 
 
 # =========================================================
-# JUDUL
+# JUDUL APLIKASI
 # =========================================================
 
 st.title(
@@ -32,15 +32,15 @@ st.title(
 )
 
 st.markdown(
-    "Menggunakan algoritma: "
-    "**Random Forest Regressor**"
+    "Menggunakan algoritma **Random Forest Regressor**"
 )
 
 st.markdown(
-    "Data penelitian tahun **2018–2024** "
-    "digunakan untuk membangun model dan "
-    "melakukan prediksi jumlah balita stunting "
-    "tahun **2025–2026**."
+    """
+    Aplikasi ini menggunakan data Kabupaten Indramayu
+    tahun **2018–2024** untuk melakukan prediksi jumlah
+    balita stunting tahun **2025–2026**.
+    """
 )
 
 
@@ -55,6 +55,14 @@ def load_data():
         "dataset_indramayu_2018_2024.csv"
     )
 
+    # Membersihkan spasi pada nama kolom
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+    )
+
+    # Filter Kabupaten Indramayu
     df = df[
         df["nama_kabupaten_kota"]
         .astype(str)
@@ -65,29 +73,47 @@ def load_data():
         )
     ].copy()
 
-    return df.sort_values(
+    # Mengurutkan berdasarkan tahun
+    df = df.sort_values(
         "tahun"
     ).reset_index(drop=True)
 
+    return df
+
 
 # =========================================================
-# LOAD MODEL
+# LOAD MODEL RANDOM FOREST
 # =========================================================
 
 @st.cache_resource
 def load_model():
 
-    return joblib.load(
+    model = joblib.load(
         "random_forest_model.pkl"
     )
+
+    return model
 
 
 # =========================================================
 # LOAD DATA DAN MODEL
 # =========================================================
 
-df = load_data()
-rf = load_model()
+try:
+
+    df = load_data()
+    rf = load_model()
+
+except Exception as e:
+
+    st.error(
+        "Terjadi kesalahan saat memuat dataset "
+        "atau model Random Forest."
+    )
+
+    st.exception(e)
+
+    st.stop()
 
 
 # =========================================================
@@ -101,7 +127,9 @@ fitur = [
     "jumlah_tenaga_gizi"
 ]
 
-target = "jumlah_balita_stunting"
+target = (
+    "jumlah_balita_stunting"
+)
 
 
 # =========================================================
@@ -117,16 +145,59 @@ st.sidebar.write(
 )
 
 st.sidebar.write(
-    "Data: 2018–2024"
+    "Periode Data: 2018–2024"
 )
 
 st.sidebar.write(
-    "Prediksi: 2025–2026"
+    "Periode Prediksi: 2025–2026"
 )
 
 st.sidebar.write(
-    "Model: Random Forest Regressor"
+    "Algoritma: Random Forest Regressor"
 )
+
+
+# =========================================================
+# VALIDASI KOLOM DATASET
+# =========================================================
+
+kolom_wajib = [
+    "kode_kabupaten_kota",
+    "nama_kabupaten_kota",
+    "tahun",
+    "jumlah_balita_stunting",
+    "persentase_penduduk_miskin",
+    "garis_kemiskinan",
+    "persentase_sanitasi_layak",
+    "jumlah_tenaga_gizi"
+]
+
+kolom_hilang = [
+    kolom
+    for kolom in kolom_wajib
+    if kolom not in df.columns
+]
+
+if kolom_hilang:
+
+    st.error(
+        "Kolom berikut tidak ditemukan "
+        "dalam dataset:"
+    )
+
+    st.write(
+        kolom_hilang
+    )
+
+    st.write(
+        "Kolom yang tersedia:"
+    )
+
+    st.write(
+        df.columns.tolist()
+    )
+
+    st.stop()
 
 
 # =========================================================
@@ -139,18 +210,11 @@ st.subheader(
 )
 
 st.dataframe(
+
     df[
-        [
-            "kode_kabupaten_kota",
-            "nama_kabupaten_kota",
-            "tahun",
-            "jumlah_balita_stunting",
-            "persentase_penduduk_miskin",
-            "garis_kemiskinan",
-            "persentase_sanitasi_layak",
-            "jumlah_tenaga_gizi"
-        ]
+        kolom_wajib
     ],
+
     use_container_width=True
 )
 
@@ -159,7 +223,9 @@ st.dataframe(
 # PREDIKSI DATA AKTUAL
 # =========================================================
 
-X_actual = df[fitur]
+X_actual = df[
+    fitur
+]
 
 df_actual = df.copy()
 
@@ -171,7 +237,7 @@ df_actual[
 
 
 # =========================================================
-# HASIL PREDIKSI 2018–2024
+# HASIL PREDIKSI DATA AKTUAL
 # =========================================================
 
 st.subheader(
@@ -180,6 +246,7 @@ st.subheader(
 )
 
 st.dataframe(
+
     df_actual[
         [
             "tahun",
@@ -187,12 +254,13 @@ st.dataframe(
             "Prediksi Random Forest"
         ]
     ],
+
     use_container_width=True
 )
 
 
 # =========================================================
-# PREDIKSI 2025–2026
+# PREDIKSI TAHUN 2025–2026
 # =========================================================
 
 st.subheader(
@@ -200,42 +268,58 @@ st.subheader(
     "Tahun 2025–2026"
 )
 
-# Membuat data tahun 2025–2026
-tahun_future = [2025, 2026]
+
+# Tahun yang akan diprediksi
+tahun_future = [
+    2025,
+    2026
+]
 
 df_future = pd.DataFrame({
-    "tahun": tahun_future
+
+    "tahun":
+    tahun_future
+
 })
 
 
 # =========================================================
-# PROYEKSI FITUR 2025–2026
+# PROYEKSI VARIABEL INPUT 2025–2026
 # =========================================================
 
 for kolom in fitur:
 
+    # Membuat regresi linear sederhana
+    # berdasarkan data historis 2018–2024
+
     koefisien = np.polyfit(
+
         df["tahun"],
+
         df[kolom],
+
         1
+
     )
 
     fungsi_prediksi = np.poly1d(
         koefisien
     )
 
-    df_future[kolom] = (
-        fungsi_prediksi(
-            df_future["tahun"]
-        )
+    df_future[
+        kolom
+    ] = fungsi_prediksi(
+        df_future["tahun"]
     )
 
 
 # =========================================================
-# PREDIKSI RANDOM FOREST
+# PREDIKSI RANDOM FOREST 2025–2026
 # =========================================================
 
-X_future = df_future[fitur]
+X_future = df_future[
+    fitur
+]
 
 df_future[
     "Prediksi Jumlah Balita Stunting"
@@ -243,16 +327,39 @@ df_future[
     X_future
 )
 
+
+# Membulatkan hasil prediksi
+df_future[
+    "Prediksi Jumlah Balita Stunting"
+] = np.maximum(
+    0,
+    df_future[
+        "Prediksi Jumlah Balita Stunting"
+    ]
+)
+
+
+df_future[
+    "Prediksi Jumlah Balita Stunting"
+] = (
+    df_future[
+        "Prediksi Jumlah Balita Stunting"
+    ].round(0)
+)
+
+
+# Nama wilayah
 df_future[
     "Nama Kabupaten/Kota"
 ] = "Indramayu"
 
 
 # =========================================================
-# TAMPILKAN HASIL PREDIKSI
+# TABEL HASIL PREDIKSI 2025–2026
 # =========================================================
 
 st.dataframe(
+
     df_future[
         [
             "Nama Kabupaten/Kota",
@@ -260,7 +367,9 @@ st.dataframe(
             "Prediksi Jumlah Balita Stunting"
         ]
     ],
+
     use_container_width=True
+
 )
 
 
@@ -278,10 +387,15 @@ fig, ax = plt.subplots(
 )
 
 ax.bar(
-    df_future["tahun"].astype(str),
+
+    df_future[
+        "tahun"
+    ].astype(str),
+
     df_future[
         "Prediksi Jumlah Balita Stunting"
     ]
+
 )
 
 ax.set_xlabel(
@@ -297,7 +411,18 @@ ax.set_title(
     "Kabupaten Indramayu Tahun 2025–2026"
 )
 
-st.pyplot(fig)
+ax.grid(
+    axis="y",
+    alpha=0.3
+)
+
+st.pyplot(
+    fig
+)
+
+plt.close(
+    fig
+)
 
 
 # =========================================================
@@ -309,6 +434,8 @@ st.subheader(
     "Kabupaten Indramayu Tahun 2018–2026"
 )
 
+
+# Data aktual
 df_tren_aktual = df[
     [
         "tahun",
@@ -316,10 +443,8 @@ df_tren_aktual = df[
     ]
 ].copy()
 
-df_tren_aktual[
-    "Jenis"
-] = "Data Aktual"
 
+# Data prediksi
 df_tren_prediksi = df_future[
     [
         "tahun",
@@ -327,41 +452,50 @@ df_tren_prediksi = df_future[
     ]
 ].copy()
 
-df_tren_prediksi = (
-    df_tren_prediksi.rename(
-        columns={
-            "Prediksi Jumlah Balita Stunting":
-            "jumlah_balita_stunting"
-        }
-    )
-)
 
-df_tren_prediksi[
-    "Jenis"
-] = "Data Prediksi"
-
+# Membuat grafik
 fig2, ax2 = plt.subplots(
     figsize=(10, 5)
 )
 
+
+# Grafik aktual
 ax2.plot(
-    df_tren_aktual["tahun"],
+
+    df_tren_aktual[
+        "tahun"
+    ],
+
     df_tren_aktual[
         "jumlah_balita_stunting"
     ],
+
     marker="o",
+
     label="Data Aktual"
+
 )
 
+
+# Grafik prediksi
 ax2.plot(
-    df_tren_prediksi["tahun"],
+
     df_tren_prediksi[
-        "jumlah_balita_stunting"
+        "tahun"
     ],
+
+    df_tren_prediksi[
+        "Prediksi Jumlah Balita Stunting"
+    ],
+
     marker="s",
+
     linestyle="--",
+
     label="Prediksi Random Forest"
+
 )
+
 
 ax2.set_title(
     "Tren Jumlah Balita Stunting "
@@ -378,9 +512,18 @@ ax2.set_ylabel(
 
 ax2.legend()
 
-ax2.grid(True)
+ax2.grid(
+    True,
+    alpha=0.3
+)
 
-st.pyplot(fig2)
+st.pyplot(
+    fig2
+)
+
+plt.close(
+    fig2
+)
 
 
 # =========================================================
@@ -392,23 +535,26 @@ st.subheader(
 )
 
 st.caption(
-    "Evaluasi model dilakukan berdasarkan "
-    "data aktual tahun 2018–2024. "
-    "Prediksi tahun 2025–2026 digunakan "
-    "untuk melihat estimasi jumlah balita stunting "
-    "pada periode mendatang."
+    "Evaluasi berikut menunjukkan kemampuan model "
+    "Random Forest dalam memprediksi data yang tersedia "
+    "pada periode 2018–2024. Prediksi tahun 2025–2026 "
+    "digunakan untuk estimasi periode mendatang."
 )
 
 
+# Nilai aktual
 y_actual = df[
     target
 ]
 
+
+# Nilai prediksi
 y_pred = df_actual[
     "Prediksi Random Forest"
 ]
 
 
+# Menghitung metrik evaluasi
 r2 = r2_score(
     y_actual,
     y_pred
@@ -429,6 +575,7 @@ rmse = np.sqrt(
 )
 
 
+# Membuat tabel evaluasi
 eval_df = pd.DataFrame({
 
     "Model": [
@@ -485,27 +632,47 @@ st.subheader(
     "Feature Importance Random Forest"
 )
 
+
 feature_importance = pd.DataFrame({
 
-    "Fitur": fitur,
+    "Fitur":
+    fitur,
 
     "Importance":
     rf.feature_importances_
 
 })
 
+
 feature_importance = (
+
     feature_importance
+
     .sort_values(
+
         "Importance",
+
         ascending=False
+
     )
+
+    .reset_index(
+        drop=True
+    )
+
 )
 
 
+# =========================================================
+# TABEL FEATURE IMPORTANCE
+# =========================================================
+
 st.dataframe(
+
     feature_importance,
+
     use_container_width=True
+
 )
 
 
@@ -518,12 +685,15 @@ fig3, ax3 = plt.subplots(
 )
 
 ax3.barh(
+
     feature_importance[
         "Fitur"
     ],
+
     feature_importance[
         "Importance"
     ]
+
 )
 
 ax3.set_xlabel(
@@ -541,34 +711,62 @@ ax3.set_title(
 
 ax3.invert_yaxis()
 
-st.pyplot(fig3)
+ax3.grid(
+    axis="x",
+    alpha=0.3
+)
+
+st.pyplot(
+    fig3
+)
+
+plt.close(
+    fig3
+)
 
 
 # =========================================================
-# KESIMPULAN
+# KESIMPULAN PREDIKSI
 # =========================================================
 
 st.subheader(
     "Kesimpulan Prediksi"
 )
 
-tahun_tertinggi = df_future.loc[
+
+# Tahun dengan prediksi tertinggi
+tahun_tertinggi = int(
+
+    df_future.loc[
+
+        df_future[
+            "Prediksi Jumlah Balita Stunting"
+        ].idxmax(),
+
+        "tahun"
+
+    ]
+
+)
+
+
+# Nilai prediksi tertinggi
+nilai_tertinggi = (
+
     df_future[
         "Prediksi Jumlah Balita Stunting"
-    ].idxmax(),
-    "tahun"
-]
+    ].max()
 
-nilai_tertinggi = df_future[
-    "Prediksi Jumlah Balita Stunting"
-].max()
+)
 
 
 st.info(
+
     f"Berdasarkan hasil prediksi menggunakan "
     f"Random Forest Regressor, estimasi jumlah "
     f"balita stunting tertinggi pada periode "
     f"2025–2026 diperkirakan terjadi pada tahun "
     f"{tahun_tertinggi} dengan jumlah sekitar "
     f"{nilai_tertinggi:,.0f} balita."
+
 )
